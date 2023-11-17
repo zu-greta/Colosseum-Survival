@@ -57,6 +57,14 @@ def is_surrounded(self, chess_board, pos):
     def count_walls(self, chess_board):
     # Heuristic 4: Overall number of walls on the board
         return np.sum(chess_board)
+
+
+
+
+def is_valid_wall_placement(self, chess_board, pos, direction):
+    # Check if placing a wall at the specified position and direction is valid
+        return chess_board[pos[0], pos[1], direction]
+
     
     def step(self, chess_board, my_pos, adv_pos, max_step):
         """
