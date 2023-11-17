@@ -23,7 +23,41 @@ class StudentAgent(Agent):
             "d": 2,
             "l": 3,
         }
+def is_surrounded(self, chess_board, pos):
+    # Heuristic 1: Check for being surrounded by 3 walls after your turn  
+        r, c = pos
+        walls_count = sum(chess_board[r, c, :])
+        return walls_count == 3
+    
+    def get_last_free_wall(self, chess_board, pos):
+    # returns the 4th wall if 3 others are drawn
+        r, c = pos
+        if chess_board[r, c, 0] == False:
+            return chess_board[r, c, 0]
+        elif chess_board[r, c, 1] == False:
+            return chess_board[r, c, 1]
+        elif chess_board[r, c, 2] == False:
+            return chess_board[r, c, 2]
+        elif chess_board[r, c, 3] == False:
+            return chess_board[r, c, 3]
+        
+    def count_move_options(self, chess_board, pos):
+    # Heuristic 2: Check for how many move options you would have after ending
+        moves = [0, 1, 2, 3]
+        r, c = pos
+        move_options = sum(1 for move in moves if not chess_board[r, c, moves.index(move)])
+        return move_options
 
+    
+    def calculate_distance(self, my_pos, adv_pos):
+    # Heuristic 3: Check your distance from the opponent
+        return abs(my_pos[0] - adv_pos[0]) + abs(my_pos[1] - adv_pos[1])
+
+    
+    def count_walls(self, chess_board):
+    # Heuristic 4: Overall number of walls on the board
+        return np.sum(chess_board)
+    
     def step(self, chess_board, my_pos, adv_pos, max_step):
         """
         Implement the step function of your agent here.
