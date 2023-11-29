@@ -9,6 +9,7 @@
 # win rate: 0.999 against random_agent with 1000 games using 1.907s with 20 simulations and top 20 moves, json [mimi]
 # win rate: 0.999 against random_agent with 1000 games using 1.909s with 15 simulations and top 15 moves, json [mimi] [best_move + priority sort]
 # win rate: ? against random_agent with 10000 games using ?s with 10 simulations and top 10 moves, json [mimi] 
+# git test
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
