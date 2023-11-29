@@ -10,16 +10,16 @@ import time
 
 import json
 
-@register_agent("student15_agent")
-class Student15Agent(Agent):
+@register_agent("student16_agent")
+class Student16Agent(Agent):
     """
     A dummy class for your implementation. Feel free to use this class to
     add any helper functionalities needed for your agent.
     """
 
     def __init__(self):
-        super(Student15Agent, self).__init__()
-        self.name = "Student15Agent"
+        super(Student16Agent, self).__init__()
+        self.name = "Student16Agent"
         self.dir_map = {
             "u": 0,
             "r": 1,
@@ -235,15 +235,15 @@ class Student15Agent(Agent):
             # only one move (usually immediate win)
             my_pos, dir = children[0][3], children[0][4]
         elif (len(children) != 0): # more than one move, run simulations to find the best move
-            for i in range(len(children)): # run simulations on each child
-                while (children[i][2] < self.max_sims and not self.timeout(start_time)): # run until max_sims or timeout
-                    #step_board = deepcopy(chess_board) # copy the chess_board
+            while (not self.timeout(start_time)): # run until timeout
+                for i in range(len(children)):
                     step_board = np.array(json.loads(json.dumps(chess_board_list))) # copy the chess_board
                     score = self.simulation(children[i][3], children[i][4], adv_pos, max_step, step_board, start_time) # run simulation
                     children[i][1] += score # update score
                     children[i][2] += 1 # update num of simulations
-                #print("num:", children[i])
-                if (self.timeout(start_time)): # if timeout, break
+                    if (self.timeout(start_time)):
+                        break
+                if children[0][2] > self.max_sims:
                     break
             my_pos, dir = self.best_move(children) # get the best move based on score/num_sims
 
