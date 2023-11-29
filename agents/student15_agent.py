@@ -109,7 +109,7 @@ class Student15Agent(Agent):
             # is_gamover is true if one of the player is enclosed, return the winner
             if (player_switch == -1) :
                 # adversary's turn
-                a_children = self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:5]
+                a_children = self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sims]
                 if len(a_children) == 0:
                     gameover, score = self.is_gameover(my_pos, adv_pos, step_board)
                     break
@@ -119,7 +119,7 @@ class Student15Agent(Agent):
                     self.set_barrier(adv_pos[0], adv_pos[1], dir, step_board, True)
             else :
                 # my turn
-                m_children = self.all_moves(step_board, my_pos, adv_pos, max_step, start_time)[:5]
+                m_children = self.all_moves(step_board, my_pos, adv_pos, max_step, start_time)[:self.max_sims]
                 if len(m_children) == 0:
                     gameover, score = self.is_gameover(my_pos, adv_pos, step_board)
                     break
@@ -161,6 +161,43 @@ class Student15Agent(Agent):
         else: # if find_my_pos is larger, I win
             return True, 1
         
+    # Heuristic: check number of moves left after placing a wall
+    def check_moves_left(self, chess_board, my_pos, adv_pos, max_step, children):
+        def find_moves(my_pos, adv_pos, chess_board, max_step):
+            # return a list of legal moves using BFS
+            # for every possible num of steps until max_step, travel 4 directions + put wall. append to legal, sort and return the top #
+            legal = [] # list of [(x, y), dir]
+            state_queue = [(my_pos, 0)]
+            visited = [my_pos, adv_pos]
+            # BFS
+            while state_queue:
+                cur_pos, cur_step = state_queue.pop()
+                x, y = cur_pos
+                for dir, move in enumerate(self.moves): # 4 directions
+                    if chess_board[x, y, dir]: # if there is a wall, skip the move
+                        continue
+                    legal.append([(x, y), dir]) # append to legal
+                    # get the next step
+                    new_x, new_y = x + move[0], y + move[1] 
+                    new_pos = (new_x, new_y)
+                    if new_pos not in visited and cur_step + 1 <= max_step: # if not visited and not exceed max_step, append to queue
+                        visited.append(new_pos)
+                        state_queue.append((new_pos, cur_step + 1))
+            return len(legal)
+        for i in range(len(children)):
+            new_pos, new_dir = children[i][3], children[i][4]
+            adv_moves_bef = find_moves(adv_pos, my_pos, chess_board, max_step)
+            my_moves_bef = find_moves(my_pos, adv_pos, chess_board, max_step)
+            self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, True)
+            adv_moves_aft = find_moves(adv_pos, my_pos, chess_board, max_step)
+            my_moves_aft = find_moves(my_pos, adv_pos, chess_board, max_step)
+            self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, False)
+            if (adv_moves_aft < adv_moves_bef) :
+                children[i][0] += 0.1
+            if (my_moves_aft > my_moves_bef) :
+                children[i][0] += 0.1
+        return sorted(children, key=lambda x: x[0], reverse=True)
+
     # get the best next move
     def best_move(self, children):
         # return a tuple of ((x, y), dir),
@@ -192,7 +229,10 @@ class Student15Agent(Agent):
         # get all legal moves in order of priority based on heuristic function
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         children = self.all_moves(chess_board, my_pos, adv_pos, max_step, start_time)[:10] # get top legal moves
-        if (len(children) == 1): # only one move (usually immediate win)
+        children = self.check_moves_left(chess_board, my_pos, adv_pos, max_step, children) # heuristic: check moves left after placing wall
+        print("time:", time.time() - start_time)
+        if (len(children) == 1): 
+            # only one move (usually immediate win)
             my_pos, dir = children[0][3], children[0][4]
         elif (len(children) != 0): # more than one move, run simulations to find the best move
             for i in range(len(children)): # run simulations on each child

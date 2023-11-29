@@ -204,6 +204,7 @@ class Student14Agent(Agent):
                     score = self.simulation(children[i][3], children[i][4], adv_pos, max_step, step_board, start_time) # run simulation
                     children[i][1] += score # update score
                     children[i][2] += 1 # update num of simulations
+                print("num:", children[i])
                 if (self.timeout(start_time)): # if timeout, break
                     break
             my_pos, dir = self.best_move(children) # get the best move based on score/num_sims
