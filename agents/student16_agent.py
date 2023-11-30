@@ -1,4 +1,6 @@
 # win rate: ? against random_agent with 100 games and ? time 
+# changes: simulation depth limit + wall direction
+# added heuristic (15 also has) - moves left after wall
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
@@ -84,8 +86,10 @@ class Student16Agent(Agent):
     def calculate_direction(self, my_pos, adv_pos, dir):
         r0, c0 = my_pos
         r1, c1 = adv_pos
-        if (r0 <= r1 and dir == 2) or (r0 >= r1 and dir == 0) or (c0 <= c1 and dir == 1) or (c0 >= c1 and dir == 3):
+        if (r0 < r1 and dir == 2) or (r0 > r1 and dir == 0) or (c0 < c1 and dir == 1) or (c0 > c1 and dir == 3):
             return 1
+        elif (r0 == r1 and dir == 2) or (r0 == r1 and dir == 0) or (c0 == c1 and dir == 1) or (c0 == c1 and dir == 3):
+            return 0.5
         else:
             return 0
     
@@ -104,8 +108,10 @@ class Student16Agent(Agent):
         self.set_barrier(my_pos[0], my_pos[1], dir, step_board, True)
         player_switch = -1 # -1 is adv, 1 is me. every time switch player do player_switch *= -1
         score = 0 # score = 1 if win, score = -1 if lose, score = 0 if tie
+        depth = 0 # depth of simulations
         gameover = False
-        while (not gameover and not self.timeout(start_time)) :
+        while (not gameover and not self.timeout(start_time) and depth <= max_step) :
+            depth += 0.5
             # is_gamover is true if one of the player is enclosed, return the winner
             if (player_switch == -1) :
                 # adversary's turn
@@ -130,7 +136,7 @@ class Student16Agent(Agent):
             gameover, score = self.is_gameover(my_pos, adv_pos, step_board) # check if gameover
             player_switch *= -1 # switch player
         # run random simulation on x, y, d node. if win, s+=1, lose, s-=1. tie s+=0
-        return score
+        return score * (2 - depth/max_step)
     
     # check if gameover
     def is_gameover(self, my_pos, adv_pos, step_board):
@@ -235,15 +241,15 @@ class Student16Agent(Agent):
             # only one move (usually immediate win)
             my_pos, dir = children[0][3], children[0][4]
         elif (len(children) != 0): # more than one move, run simulations to find the best move
-            while (not self.timeout(start_time)): # run until timeout
-                for i in range(len(children)):
+            for i in range(len(children)): # run simulations on each child
+                while (children[i][2] < self.max_sims and not self.timeout(start_time)): # run until max_sims or timeout
+                    #step_board = deepcopy(chess_board) # copy the chess_board
                     step_board = np.array(json.loads(json.dumps(chess_board_list))) # copy the chess_board
                     score = self.simulation(children[i][3], children[i][4], adv_pos, max_step, step_board, start_time) # run simulation
                     children[i][1] += score # update score
                     children[i][2] += 1 # update num of simulations
-                    if (self.timeout(start_time)):
-                        break
-                if children[0][2] > self.max_sims:
+                #print("num:", children[i])
+                if (self.timeout(start_time)): # if timeout, break
                     break
             my_pos, dir = self.best_move(children) # get the best move based on score/num_sims
 
