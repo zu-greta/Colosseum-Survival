@@ -1,4 +1,5 @@
 # win rate: ? against random_agent with 100 games and ? time 
+# changes: same as 16 + A* search?
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
@@ -74,6 +75,13 @@ class Student15Agent(Agent):
                     state_queue.append((new_pos, cur_step + 1))
         return sorted(legal, key=lambda x: x[0], reverse=True)
     
+    # A* search to find the shortest path from my_pos to adv_pos
+    def a_star(self, chess_board, my_pos, adv_pos, max_step):
+        # find the shortest path from my_pos to adv_pos
+        # find the max position reachable from my_pos (using max_step)
+        # set priorities
+        pass
+    
     # calculate the manhattan distance between two positions
     def calculate_distance(self, my_pos, adv_pos):
         r0, c0 = my_pos
@@ -84,8 +92,10 @@ class Student15Agent(Agent):
     def calculate_direction(self, my_pos, adv_pos, dir):
         r0, c0 = my_pos
         r1, c1 = adv_pos
-        if (r0 <= r1 and dir == 2) or (r0 >= r1 and dir == 0) or (c0 <= c1 and dir == 1) or (c0 >= c1 and dir == 3):
+        if (r0 < r1 and dir == 2) or (r0 > r1 and dir == 0) or (c0 < c1 and dir == 1) or (c0 > c1 and dir == 3):
             return 1
+        elif (r0 == r1 and dir == 2) or (r0 == r1 and dir == 0) or (c0 == c1 and dir == 1) or (c0 == c1 and dir == 3):
+            return 0.5
         else:
             return 0
     
@@ -104,8 +114,10 @@ class Student15Agent(Agent):
         self.set_barrier(my_pos[0], my_pos[1], dir, step_board, True)
         player_switch = -1 # -1 is adv, 1 is me. every time switch player do player_switch *= -1
         score = 0 # score = 1 if win, score = -1 if lose, score = 0 if tie
+        depth = 0 # depth of simulations
         gameover = False
-        while (not gameover and not self.timeout(start_time)) :
+        while (not gameover and not self.timeout(start_time) and depth <= max_step) :
+            depth += 0.5
             # is_gamover is true if one of the player is enclosed, return the winner
             if (player_switch == -1) :
                 # adversary's turn
@@ -130,7 +142,7 @@ class Student15Agent(Agent):
             gameover, score = self.is_gameover(my_pos, adv_pos, step_board) # check if gameover
             player_switch *= -1 # switch player
         # run random simulation on x, y, d node. if win, s+=1, lose, s-=1. tie s+=0
-        return score
+        return score * (2 - depth/max_step)
     
     # check if gameover
     def is_gameover(self, my_pos, adv_pos, step_board):
