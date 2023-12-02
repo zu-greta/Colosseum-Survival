@@ -198,18 +198,28 @@ class Student15Agent(Agent):
                         visited.append(new_pos)
                         state_queue.append((new_pos, cur_step + 1))
             return len(legal)
+        # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         for i in range(len(children)):
+            # get numbe rof moves left before placing wall
             new_pos, new_dir = children[i][3], children[i][4]
             adv_moves_bef = find_moves(adv_pos, my_pos, chess_board, max_step)
             my_moves_bef = find_moves(my_pos, adv_pos, chess_board, max_step)
+            # get number of moves left after placing wall
             self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, True)
             adv_moves_aft = find_moves(adv_pos, my_pos, chess_board, max_step)
             my_moves_aft = find_moves(my_pos, adv_pos, chess_board, max_step)
             self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, False)
+            # update p based on heuristic, 
+            # offensive: increase p if adv_moves_aft < adv_moves_bef, increase p if my_moves_aft > my_moves_bef
+            # defensive: decrease p if adv_moves_aft > adv_moves_bef, decrease p if my_moves_aft < my_moves_bef
             if (adv_moves_aft < adv_moves_bef) :
                 children[i][0] += 0.1
             if (my_moves_aft > my_moves_bef) :
                 children[i][0] += 0.1
+            if (adv_moves_aft > adv_moves_bef) :
+                children[i][0] -= 0.1
+            if (my_moves_aft < my_moves_bef) :
+                children[i][0] -= 0.1
         return sorted(children, key=lambda x: x[0], reverse=True)
 
     # get the best next move
