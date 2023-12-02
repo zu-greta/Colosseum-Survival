@@ -1,6 +1,15 @@
 # win rate: ? against random_agent with 100 games and ? time 
 # changes: same as 16 + A* search?
 
+# testing commands:
+# source venv/bin/activate
+# cd 424_project
+# python3 simulator.py --player_1 random_agent --player_2 student15_agent --display
+# python3 simulator.py --player_1 random_agent --player_2 student15_agent --autoplay --autoplay_runs 100
+
+# helpful website for a*: https://gist.github.com/ryancollingwood/32446307e976a11a1185a5394d6657bc
+
+
 # Student agent: Add your own agent here
 from agents.agent import Agent
 from store import register_agent
@@ -10,6 +19,7 @@ from copy import deepcopy
 import time
 
 import json
+import ctypes 
 
 @register_agent("student15_agent")
 class Student15Agent(Agent):
@@ -78,11 +88,55 @@ class Student15Agent(Agent):
     # A* search to find the shortest path from my_pos to adv_pos
     def a_star(self, chess_board, my_pos, adv_pos, max_step):
         # find the shortest path from my_pos to adv_pos
+        def path_find(chess_board, my_pos, adv_pos, max_step):
+            start = [my_pos[0], my_pos[1], 0, 0, 0, 0, 0, None] # [x, y, d, g, h, f, step, parent]
+            end = [adv_pos[0], adv_pos[1], 0, 0, 0, 0, 0, None] # [x, y, d, g, h, f, step, parent]
+            step = 0
+            open_list = [start]
+            closed_list = []
+            visited = []
+            while len(open_list) > 0:
+                open_list.sort(key=lambda x: x[5], reverse=True) # sort on f value
+                cur = open_list.pop() # node with least f value sorted on the rightmost
+                closed_list.append((cur[0], cur[1], cur[2], cur[6]))
+                visited.append((cur[0], cur[1], cur[2]))
+                #print("cur:", cur)
+                if (cur[0], cur[1]) == (end[0], end[1]):
+                    #backtrack to get the path
+                    path = []
+                    c = cur
+                    while c is not None:
+                        print("c:", c)
+                        if c[6] <= max_step:
+                            path.append(((c[0], c[1]), c[2], c[6]))
+                        print("addr:", c[7])
+                        c = ctypes.cast(c[7], ctypes.py_object).value # parent
+                        print("c parent:", c)
+                    return path, closed_list # return the path and closed_list
+                # all children of cur
+                for dir, move in enumerate(self.moves):
+                    if chess_board[cur[0], cur[1], dir]:
+                        continue
+                    new_x, new_y = cur[0] + move[0], cur[1] + move[1]
+                    new_node = [new_x, new_y, dir, 0, 0, 0, step + 1, id(cur)]
+                    # check if child is in closed_list
+                    if (new_x, new_y, dir) in visited:
+                        continue
+                    # assign f, g, h values
+                    new_node[3] = cur[3] + 1
+                    new_node[4] = self.calculate_distance((new_x, new_y), adv_pos)
+                    new_node[5] = new_node[3] + new_node[4]
+                    # check if child is in open_list
+                    if len([open_node for open_node in open_list if (new_x, new_y, dir) == (open_node[0], open_node[1], open_node[2]) and new_node[3] > open_node[3]]) > 0:
+                        continue
+                    open_list.append(new_node)
         # find the max position reachable from my_pos (using max_step)
+        path = path_find(chess_board, my_pos, adv_pos, max_step)
+        
         # set priorities
         # only keep top # of moves legal and closest to the max position
         # return the list
-        pass
+        print(path)
     
     # calculate the manhattan distance between two positions
     def calculate_distance(self, my_pos, adv_pos):
@@ -245,6 +299,9 @@ class Student15Agent(Agent):
 
         Please check the sample implementation in agents/random_agent.py or agents/human_agent.py for more details.
         """
+        self.a_star(chess_board, my_pos, adv_pos, max_step)
+        print("done a*")
+        return my_pos, 0
         chess_board_list = chess_board.tolist() # convert chess_board to list -> json format
         # Some simple code to help you with timing. Consider checking 
         # time_taken during your search and breaking with the best answer
