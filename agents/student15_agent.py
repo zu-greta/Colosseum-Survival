@@ -46,7 +46,7 @@ class Student15Agent(Agent):
         return time.time() - start_time > self.max_time
     
     # get all legal moves in order of priority based on heuristic function
-    def all_moves(self, chess_board, my_pos, adv_pos, max_step, start_time):
+    def _all_moves(self, chess_board, my_pos, adv_pos, max_step, start_time):
         # return a list of legal moves using BFS
         # for every possible num of steps until max_step, travel 4 directions + put wall. append to legal, sort and return the top #
         legal = [] # list of [p, s, n, (x, y), dir]
@@ -86,39 +86,34 @@ class Student15Agent(Agent):
         return sorted(legal, key=lambda x: x[0], reverse=True)
     
     # A* search to find the shortest path from my_pos to adv_pos
-    def a_star(self, chess_board, my_pos, adv_pos, max_step):
+    def all_moves(self, chess_board, my_pos, adv_pos, max_step, start_time):
         # find the shortest path from my_pos to adv_pos
         def path_find(chess_board, my_pos, adv_pos, max_step):
-            start = [my_pos[0], my_pos[1], 0, 0, 0, 0, 0, None] # [x, y, d, g, h, f, step, parent]
-            end = [adv_pos[0], adv_pos[1], 0, 0, 0, 0, 0, None] # [x, y, d, g, h, f, step, parent]
-            step = 0
+            start = [my_pos[0], my_pos[1], 0, 0, 0, 0, 0, None] # [0: x, 1: y, 2: d, 3: g, 4: h, 5: f, 6: step, 7: parent]
+            end = [adv_pos[0], adv_pos[1], 0, 0, 0, 0, 0, None] # [0: x, 1: y, 2: d, 3: g, 4: h, 5: f, 6: step, 7: parent]
             open_list = [start]
             closed_list = []
             visited = []
+            closed = []
             while len(open_list) > 0:
                 open_list.sort(key=lambda x: x[5], reverse=True) # sort on f value
                 cur = open_list.pop() # node with least f value sorted on the rightmost
-                closed_list.append((cur[0], cur[1], cur[2], cur[6]))
+                closed_list.append((cur[0], cur[1], cur[6])) # [(x, y, d, step), ...]
                 visited.append((cur[0], cur[1], cur[2]))
-                #print("cur:", cur)
+                closed.append(cur)
                 if (cur[0], cur[1]) == (end[0], end[1]):
                     #backtrack to get the path
-                    path = []
                     c = cur
-                    while c is not None:
-                        print("c:", c)
+                    while c[7] is not None:
+                        c = closed[c[7]] # parent
                         if c[6] <= max_step:
-                            path.append(((c[0], c[1]), c[2], c[6]))
-                        print("addr:", c[7])
-                        c = ctypes.cast(c[7], ctypes.py_object).value # parent
-                        print("c parent:", c)
-                    return path, closed_list # return the path and closed_list
+                            return (c[0], c[1]), closed_list # return the furthest position reachable from my_pos and closed_list
                 # all children of cur
                 for dir, move in enumerate(self.moves):
                     if chess_board[cur[0], cur[1], dir]:
                         continue
                     new_x, new_y = cur[0] + move[0], cur[1] + move[1]
-                    new_node = [new_x, new_y, dir, 0, 0, 0, step + 1, id(cur)]
+                    new_node = [new_x, new_y, dir, 0, 0, 0, cur[6] + 1, len(closed) - 1]
                     # check if child is in closed_list
                     if (new_x, new_y, dir) in visited:
                         continue
@@ -131,12 +126,29 @@ class Student15Agent(Agent):
                         continue
                     open_list.append(new_node)
         # find the max position reachable from my_pos (using max_step)
-        path = path_find(chess_board, my_pos, adv_pos, max_step)
-        
-        # set priorities
-        # only keep top # of moves legal and closest to the max position
-        # return the list
-        print(path)
+        path, visit = path_find(chess_board, my_pos, adv_pos, max_step) # [(x, y, step), ...]
+        children = []
+        for n in visit: # throw away the positions that are too far from the max position
+            if n[2] >= max_step or self.calculate_distance((n[0], n[1]), path) > 3:
+                continue
+            for dir in range(4):
+                if chess_board[path[0], path[1], dir]:
+                    continue
+                #check if gameover, me winner = 1, adv winner = -1, tie = 0
+                #self.set_barrier(n[0], n[1], dir, chess_board, True)
+                #print("n:", n)
+                #over, w = self.is_gameover((n[0], n[1]), adv_pos, chess_board)
+                #self.set_barrier(n[0], n[1], dir, chess_board, False)
+                #if over and w: # gameover, get winner and set prio as the returned winner
+                #    p = w 
+                #    if p == 1:
+                #        return [[1, 1, 1, (n[0], n[1]), dir]] #immediate win, just play that move
+                #else:
+                p = self.calculate_direction((n[0], n[1]), adv_pos, dir) 
+                if p and sum([chess_board[n[0], n[1], i] for i in range(4)]) < 2:
+                    children.append([p, 0, 1, (n[0], n[1]), dir])
+        return sorted(children, key=lambda x: x[0], reverse=True)
+            
     
     # calculate the manhattan distance between two positions
     def calculate_distance(self, my_pos, adv_pos):
@@ -210,6 +222,7 @@ class Student15Agent(Agent):
                 cur_pos = path_queue.pop()
                 x, y = cur_pos
                 for dir, move in enumerate(self.moves):
+                    #print("HERE:", x, y, dir, step_board[x, y, dir])
                     if not step_board[x, y, dir]:
                         new_x, new_y = x + move[0], y + move[1]
                         new_pos = (new_x, new_y)
@@ -299,9 +312,8 @@ class Student15Agent(Agent):
 
         Please check the sample implementation in agents/random_agent.py or agents/human_agent.py for more details.
         """
-        self.a_star(chess_board, my_pos, adv_pos, max_step)
-        print("done a*")
-        return my_pos, 0
+        #return self.a_star(chess_board, my_pos, adv_pos, max_step)
+        
         chess_board_list = chess_board.tolist() # convert chess_board to list -> json format
         # Some simple code to help you with timing. Consider checking 
         # time_taken during your search and breaking with the best answer
