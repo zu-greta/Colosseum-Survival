@@ -80,6 +80,8 @@ class Student15Agent(Agent):
         # find the shortest path from my_pos to adv_pos
         # find the max position reachable from my_pos (using max_step)
         # set priorities
+        # only keep top # of moves legal and closest to the max position
+        # return the list
         pass
     
     # calculate the manhattan distance between two positions
