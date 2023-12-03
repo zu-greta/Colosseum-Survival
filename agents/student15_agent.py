@@ -45,144 +45,149 @@ class Student15Agent(Agent):
     def timeout(self, start_time):
         return time.time() - start_time > self.max_time
 
+        # BFS search
+    def BFS_search(self, chess_board, my_pos, adv_pos, max_step, start_time):
+        # return a list of legal moves using BFS
+        # for every possible num of steps until max_step, travel 4 directions + put wall. append to legal, sort and return the top #
+        legal = []  # list of [p, s, n, (x, y), dir]
+        state_queue = [(my_pos, 0)]
+        visited = [my_pos, adv_pos]
+        # BFS
+        while state_queue and not self.timeout(start_time):
+            cur_pos, cur_step = state_queue.pop()
+            x, y = cur_pos
+            dis = self.calculate_distance(cur_pos, adv_pos)  # get the distance between my current position and adv
+            for dir, move in enumerate(self.moves):  # 4 directions
+                if chess_board[x, y, dir]:  # if there is a wall, skip the move
+                    continue
+                # check if gameover, me winner = 1, adv winner = -1, tie = 0
+                self.set_barrier(x, y, dir, chess_board, True)
+                over, w = self.is_gameover((x, y), adv_pos, chess_board)
+                self.set_barrier(x, y, dir, chess_board, False)
+                if over and w:  # gameover, get winner and set p as the returned winner
+                    p = w
+                    if p == 1:
+                        return [[1, 1, 1, cur_pos, dir]]  # immediate win, just play that move
+                else:
+                    # Defense heuristic
+                    if sum([chess_board[x, y, i] for i in range(4)]) >= 2:  # if there are 2 walls, p = 0.1
+                        walls = 0.1
+                    else:
+                        walls = 1
+                    # Heuristic function: offense distance * defense walls * offense direction
+                    p = (1 - dis / 20) * walls * self.calculate_direction((x, y), adv_pos, dir)
+                legal.append([p, 0, 1, cur_pos, dir])  # append to legal
+                # get the next step
+                new_x, new_y = x + move[0], y + move[1]
+                new_pos = (new_x, new_y)
+                if new_pos not in visited and cur_step + 1 <= max_step:  # if not visited and not exceed max_step, append to queue
+                    visited.append(new_pos)
+                    state_queue.append((new_pos, cur_step + 1))
+        return sorted(legal, key=lambda x: x[0], reverse=True)
+
     # A* search to find the shortest path from my_pos to adv_pos
     def all_moves(self, chess_board, my_pos, adv_pos, max_step, start_time):
-        # BFS search
-        def BFS_search(chess_board, my_pos, adv_pos, max_step, start_time):
+        def find_moves(my_pos, adv_pos, chess_board, max_step):
             # return a list of legal moves using BFS
             # for every possible num of steps until max_step, travel 4 directions + put wall. append to legal, sort and return the top #
-            legal = []  # list of [p, s, n, (x, y), dir]
+            legal = [] # list of [(x, y), dir]
             state_queue = [(my_pos, 0)]
             visited = [my_pos, adv_pos]
             # BFS
-            while state_queue and not self.timeout(start_time):
+            while state_queue:
                 cur_pos, cur_step = state_queue.pop()
                 x, y = cur_pos
-                dis = self.calculate_distance(cur_pos, adv_pos)  # get the distance between my current position and adv
-                for dir, move in enumerate(self.moves):  # 4 directions
-                    if chess_board[x, y, dir]:  # if there is a wall, skip the move
+                for dir, move in enumerate(self.moves): # 4 directions
+                    if chess_board[x, y, dir]: # if there is a wall, skip the move
                         continue
-                    # check if gameover, me winner = 1, adv winner = -1, tie = 0
-                    self.set_barrier(x, y, dir, chess_board, True)
-                    over, w = self.is_gameover((x, y), adv_pos, chess_board)
-                    self.set_barrier(x, y, dir, chess_board, False)
-                    if over and w:  # gameover, get winner and set p as the returned winner
-                        p = w
-                        if p == 1:
-                            return [[1, 1, 1, cur_pos, dir]]  # immediate win, just play that move
-                    else:
-                        # Defense heuristic
-                        if sum([chess_board[x, y, i] for i in range(4)]) >= 2:  # if there are 2 walls, p = 0.1
-                            walls = 0.1
-                        else:
-                            walls = 1
-                        # Heuristic function: offense distance * defense walls * offense direction
-                        p = (1 - dis / 20) * walls * self.calculate_direction((x, y), adv_pos, dir)
-                    legal.append([p, 0, 1, cur_pos, dir])  # append to legal
+                    legal.append([(x, y), dir]) # append to legal
                     # get the next step
                     new_x, new_y = x + move[0], y + move[1]
                     new_pos = (new_x, new_y)
-                    if new_pos not in visited and cur_step + 1 <= max_step:  # if not visited and not exceed max_step, append to queue
+                    if new_pos not in visited and cur_step + 1 <= max_step: # if not visited and not exceed max_step, append to queue
                         visited.append(new_pos)
                         state_queue.append((new_pos, cur_step + 1))
-            return sorted(legal, key=lambda x: x[0], reverse=True)
+            return len(legal)
         # find the shortest path from my_pos to adv_pos
         def aStar_Search(chess_board, my_pos, adv_pos, max_step):
-            nX, nY, nG, nH, nF, nStep, nParent = 0, 1, 2, 3, 4, 5, 6
-            start = [my_pos[0], my_pos[1], 0, 0, 0, 0, None] # [0: x, 1: y, 2:  g, 4: h, 5: f, 6: step, 7: parent]
-            open_list = [start]
-            closed_list = []
+            [nX, nY, nG, nH, nParent] = [i for i in range(5)]
+            open_list = [[my_pos[0], my_pos[1], 0, 0, None]] # [0: x, 1: y, 2: g, 3: h, 4: parent]
+            visited_list = []
             visited = []
-            closed = []
-            while len(open_list) > 0:
-                open_list.sort(key=lambda x: x[nF], reverse=True) # sort on f value
+            while open_list:
+                open_list.sort(key=lambda x: x[nG]+x[nH], reverse=True) # sort on f value
                 cur = open_list.pop() # node with least f value sorted on the rightmost
                 if (cur[nX], cur[nY]) == adv_pos:
                     #backtrack to get the path
                     c = cur
                     path = []
-                    cnStep = 1
-                    mStep = c[nStep]
-                    while c[nParent] is not None:
-                        c = closed[c[nParent]] # parent
-                        if c[nStep] < max_step:
-                            if cnStep < c[nStep]: cnStep = c[nStep]
-                            path.append(((c[nX], c[nY]), c[nStep]))
-                    return path, cnStep, mStep, closed_list # return the furthest position reachable from my_pos and closed_list
-                closed_list.append(((cur[nX], cur[nY]), cur[nStep]))  # [(x, y, step), ...]
-                visited.append((cur[nX], cur[nY]))
-                closed.append(cur)
+                    while c[nParent] is not None: # from end point, until the start point
+                        c = visited[c[nParent]] # go to parent
+                        if c[nG] <= max_step:
+                            path.append((c[nX], c[nY]))
+                    return path, cur[nG] #return the furthest position reachable from my_pos and closed_list
+                visited_list.append((cur[nX], cur[nY]))
+                visited.append(cur)
                 # all children of cur
                 for dir, move in enumerate(self.moves):
                     if chess_board[cur[nX], cur[nY], dir]:
                         continue
-                    new_x, new_y = cur[nX] + move[0], cur[nY] + move[1]
-                    new_node = [new_x, new_y, 0, 0, 0, cur[nStep] + 1, len(closed) - 1]
+                    x, y = cur[nX] + move[0], cur[nY] + move[1]
                     # check if child is in closed_list
-                    if (new_x, new_y) in visited:
+                    if (x, y) in visited_list:
                         continue
                     # assign f, g, h values
-                    new_node[nG] = cur[nG] + 1
-                    new_node[nH] = self.calculate_distance((new_x, new_y), adv_pos)
-                    new_node[nF] = new_node[nG] + new_node[nH]
-                    # check if child is in open_list
-                    if len([oN for oN in open_list if (new_x, new_y) == (oN[nX], oN[nY]) and new_node[nG] > oN[nG]]) > 0:
+                    new_node = [x, y, cur[nG] + 1, self.calculate_distance((x, y), adv_pos), visited.index(cur)]
+                    # check if child is in open_list with higher steps
+                    if sum([1 for oN in open_list if ((x, y) == (oN[nX], oN[nY]) and new_node[nG] > oN[nG])]):
                         continue
                     open_list.append(new_node)
+            return [], 0 # Nothing is find
 
         # find the max position reachable from my_pos (using max_step)
-        path, p_step, m_step, visit = aStar_Search(chess_board, my_pos, adv_pos, max_step) # [(x, y, step), ...]
-        if m_step <= max_step:
+        path, m_step = aStar_Search(chess_board, my_pos, adv_pos, max_step) # [(x, y, step), ...]
+        if m_step < max_step*2:
             # close enough to run BFS
-            return BFS_search(chess_board, my_pos, adv_pos, max_step, start_time)[:10]
-
-        children = []
-        for p_pos, s in path:
-            (x, y) = p_pos
-            for dir in range(4):
-                if chess_board[x, y, dir]:
-                    continue
-                #check if gameover, me winner = 1, adv winner = -1, tie = 0
-                self.set_barrier(x, y, dir, chess_board, True)
-                over, w = self.is_gameover(p_pos, adv_pos, chess_board)
-                self.set_barrier(x, y, dir, chess_board, False)
-                if over and w: # gameover, get winner and set prio as the returned winner
-                    if w == 1: return [[1, 1, 1, p_pos, dir]] #immediate win, just play that move
-                else:
-                    w = 1
-                    if len([i for i in range(4) if chess_board[x, y, i]]) >= 2: w = 0.1
-                    d = self.calculate_direction(p_pos, adv_pos, dir)
-                    if d:
-                        children.append([d * s / p_step * w, 0, 1, p_pos, dir])
-        p_pos, _ = path[0]
-        for n_pos, s in visit: # throw away the positions that are too far from the max position
-            if s >= max_step or self.calculate_distance(n_pos, p_pos) > 3 or (n_pos, s) in path:
-                continue
-            (x, y) = n_pos
-            for dir in range(4):
-                if chess_board[x, y, dir]:
-                    continue
-                #check if gameover, me winner = 1, adv winner = -1, tie = 0
-                self.set_barrier(x, y, dir, chess_board, True)
-                over, w = self.is_gameover(n_pos, adv_pos, chess_board)
-                self.set_barrier(x, y, dir, chess_board, False)
-                if over and w: # gameover, get winner and set prio as the returned winner
-                    if w == 1: return [[1, 1, 1, n_pos, dir]] #immediate win, just play that move
-                else:
-                    w = 1
-                    if len([i for i in range(4) if chess_board[x, y, i]]) >= 2: w = 0.1
-                    d = self.calculate_direction(n_pos, adv_pos, dir)
-                    if d:
-                        children.append([d * s / p_step * w, 0, 1, n_pos, dir])
-        #print("path:", path)
-        if children:
-            return sorted(children, key=lambda x: x[0], reverse=True)
+            children = self.BFS_search(chess_board, my_pos, adv_pos, max_step, start_time)[:10]
         else:
-            #print("no way to go", children)
-            dir = [d for d in range(4) if not chess_board[p_pos[0], p_pos[1], d]]
-            dir = [self.calculate_direction(p_pos, adv_pos, d) for d in dir]
-            print("No way to go:", p_pos, dir.index(max(dir)))
-            return [[1, 1, 1, p_pos, dir.index(max(dir))]]
+            children = []
+            for p_pos in path: # check if there is any winner step
+                (x, y) = p_pos
+                for dir in range(4):
+                    if chess_board[x, y, dir]:
+                        continue
+                    #check if gameover, me winner = 1, adv winner = -1, tie = 0
+                    self.set_barrier(x, y, dir, chess_board, True)
+                    over, w = self.is_gameover(p_pos, adv_pos, chess_board)
+                    self.set_barrier(x, y, dir, chess_board, False)
+                    if over and w != -1: return [[1, 1, 1, p_pos, dir]]
+
+            x, y = path[0]
+            for d in range(4):
+                if not chess_board[x, y, d]:
+                    children.append([self.calculate_direction(path[0], adv_pos, d), 0, 1, path[0], d])
+
+        # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
+        for i in range(len(children)):
+            # get numbe rof moves left before placing wall
+            new_pos, new_dir = children[i][3], children[i][4]
+            adv_moves_bef = find_moves(adv_pos, my_pos, chess_board, max_step)
+            my_moves_bef = find_moves(my_pos, adv_pos, chess_board, max_step)
+            # get number of moves left after placing wall
+            self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, True)
+            adv_moves_aft = find_moves(adv_pos, my_pos, chess_board, max_step)
+            my_moves_aft = find_moves(my_pos, adv_pos, chess_board, max_step)
+            self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, False)
+            # update p based on heuristic,
+            if (adv_moves_aft < adv_moves_bef) :
+                children[i][0] += 0.1
+            if (my_moves_aft > my_moves_bef) :
+                children[i][0] += 0.1
+            if (adv_moves_aft > adv_moves_bef) :
+                children[i][0] -= 0.1
+            if (my_moves_aft < my_moves_bef) :
+                children[i][0] -= 0.1
+        return sorted(children, key=lambda x: x[0], reverse=True)
 
     # calculate the manhattan distance between two positions
     def calculate_distance(self, my_pos, adv_pos):
@@ -197,7 +202,7 @@ class Student15Agent(Agent):
         if (r0 < r1 and dir == 2) or (r0 > r1 and dir == 0) or (c0 < c1 and dir == 1) or (c0 > c1 and dir == 3):
             return 1
         elif (r0 == r1 and dir == 2) or (r0 == r1 and dir == 0) or (c0 == c1 and dir == 1) or (c0 == c1 and dir == 3):
-            return 0.5
+            return 0.8
         else:
             return 0
     
@@ -223,7 +228,7 @@ class Student15Agent(Agent):
             # is_gamover is true if one of the player is enclosed, return the winner
             if (myTurn) :
                 # adversary's turn
-                a_children = self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sims]
+                a_children = self.BFS_search(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sims]
                 if len(a_children) == 0:
                     gameover, score = self.is_gameover(my_pos, adv_pos, step_board)
                     break
@@ -233,7 +238,7 @@ class Student15Agent(Agent):
                     self.set_barrier(adv_pos[0], adv_pos[1], dir, step_board, True)
             else :
                 # my turn
-                m_children = self.all_moves(step_board, my_pos, adv_pos, max_step, start_time)[:self.max_sims]
+                m_children = self.BFS_search(step_board, my_pos, adv_pos, max_step, start_time)[:self.max_sims]
                 if len(m_children) == 0:
                     gameover, score = self.is_gameover(my_pos, adv_pos, step_board)
                     break
@@ -275,53 +280,6 @@ class Student15Agent(Agent):
             return True, -1
         else: # if find_my_pos is larger, I win
             return True, 1
-        
-    # Heuristic: check number of moves left after placing a wall
-    def check_moves_left(self, chess_board, my_pos, adv_pos, max_step, children):
-        def find_moves(my_pos, adv_pos, chess_board, max_step):
-            # return a list of legal moves using BFS
-            # for every possible num of steps until max_step, travel 4 directions + put wall. append to legal, sort and return the top #
-            legal = [] # list of [(x, y), dir]
-            state_queue = [(my_pos, 0)]
-            visited = [my_pos, adv_pos]
-            # BFS
-            while state_queue:
-                cur_pos, cur_step = state_queue.pop()
-                x, y = cur_pos
-                for dir, move in enumerate(self.moves): # 4 directions
-                    if chess_board[x, y, dir]: # if there is a wall, skip the move
-                        continue
-                    legal.append([(x, y), dir]) # append to legal
-                    # get the next step
-                    new_x, new_y = x + move[0], y + move[1] 
-                    new_pos = (new_x, new_y)
-                    if new_pos not in visited and cur_step + 1 <= max_step: # if not visited and not exceed max_step, append to queue
-                        visited.append(new_pos)
-                        state_queue.append((new_pos, cur_step + 1))
-            return len(legal)
-        # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
-        for i in range(len(children)):
-            # get numbe rof moves left before placing wall
-            new_pos, new_dir = children[i][3], children[i][4]
-            adv_moves_bef = find_moves(adv_pos, my_pos, chess_board, max_step)
-            my_moves_bef = find_moves(my_pos, adv_pos, chess_board, max_step)
-            # get number of moves left after placing wall
-            self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, True)
-            adv_moves_aft = find_moves(adv_pos, my_pos, chess_board, max_step)
-            my_moves_aft = find_moves(my_pos, adv_pos, chess_board, max_step)
-            self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, False)
-            # update p based on heuristic, 
-            # offensive: increase p if adv_moves_aft < adv_moves_bef, increase p if my_moves_aft > my_moves_bef
-            # defensive: decrease p if adv_moves_aft > adv_moves_bef, decrease p if my_moves_aft < my_moves_bef
-            if (adv_moves_aft < adv_moves_bef) :
-                children[i][0] += 0.1
-            if (my_moves_aft > my_moves_bef) :
-                children[i][0] += 0.1
-            if (adv_moves_aft > adv_moves_bef) :
-                children[i][0] -= 0.1
-            if (my_moves_aft < my_moves_bef) :
-                children[i][0] -= 0.1
-        return sorted(children, key=lambda x: x[0], reverse=True)
 
     # get the best next move
     def best_move(self, children):
@@ -356,20 +314,20 @@ class Student15Agent(Agent):
         # get all legal moves in order of priority based on heuristic function
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         children = self.all_moves(chess_board, my_pos, adv_pos, max_step, start_time) # get top legal moves
-        children = self.check_moves_left(chess_board, my_pos, adv_pos, max_step, children) # heuristic: check moves left after placing wall
         #print("time:", time.time() - start_time)
         if (len(children) == 1): 
             # only one move (usually immediate win)
             my_pos, dir = children[0][3], children[0][4]
         elif (len(children) != 0): # more than one move, run simulations to find the best move
             for i in range(len(children)): # run simulations on each child
+                #print("num:", children[i])
                 while (children[i][2] < self.max_sims and not self.timeout(start_time)): # run until max_sims or timeout
                     #step_board = deepcopy(chess_board) # copy the chess_board
                     step_board = np.array(json.loads(json.dumps(chess_board_list))) # copy the chess_board
                     score = self.simulation(children[i][3], children[i][4], adv_pos, max_step, step_board, start_time) # run simulation
                     children[i][1] += score # update score
                     children[i][2] += 1 # update num of simulations
-
+                #print("num:", children[i])
                 if (self.timeout(start_time)): # if timeout, break
                     break
             my_pos, dir = self.best_move(children) # get the best move based on score/num_sims
