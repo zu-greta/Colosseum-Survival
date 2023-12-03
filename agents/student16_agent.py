@@ -10,7 +10,7 @@ import numpy as np
 from copy import deepcopy
 import time
 
-import json
+import json #standard python library - no need to install (used instead of deepcopy)
 
 @register_agent("student16_agent")
 class Student16Agent(Agent):
@@ -36,17 +36,17 @@ class Student16Agent(Agent):
     def timeout(self, start_time):
         return time.time() - start_time > self.max_time
     
-    # get all legal moves in order of priority based on heuristic function
+    # get all legal moves in order of priority based on heuristic function using BFS
     def all_moves(self, chess_board, my_pos, adv_pos, max_step, start_time):
         # return a list of legal moves using BFS
         # for every possible num of steps until max_step, travel 4 directions + put wall. append to legal, sort and return the top #
         legal = [] # list of [p, s, n, (x, y), dir]
-        state_queue = [(my_pos, 0)]
-        visited = [my_pos, adv_pos]
+        state_queue = [(my_pos, 0)] # queue of next states
+        visited = [my_pos, adv_pos] # list of visited states
         # BFS
-        while state_queue and not self.timeout(start_time):
-            cur_pos, cur_step = state_queue.pop()
-            x, y = cur_pos
+        while state_queue and not self.timeout(start_time): # if timeout or state_queue is empty, break
+            cur_pos, cur_step = state_queue.pop() # get the current position and current step
+            x, y = cur_pos # get the current x, y
             dis = self.calculate_distance(cur_pos, adv_pos) #get the distance between my current position and adv
             for dir, move in enumerate(self.moves): # 4 directions
                 if chess_board[x, y, dir]: # if there is a wall, skip the move
@@ -56,15 +56,15 @@ class Student16Agent(Agent):
                 over, w = self.is_gameover((x, y), adv_pos, chess_board)
                 self.set_barrier(x, y, dir, chess_board, False)
                 if over and w: # gameover, get winner and set p as the returned winner
-                    p = w 
+                    p = w # p = 1 if I win, p = -1 if I lose, p = 0 if tie
                     if p == 1:
                         return [[1, 1, 1, (x, y), dir]] #immediate win, just play that move
                 else:
-                    # Defense heuristic
+                    # Defense heuristic (counts the number of walls around me)
                     if sum([chess_board[x, y, i] for i in range(4)]) >= 2: # if there are 2 walls, p = 0.1 
                         walls = 0.1
                     else: 
-                        walls = 1
+                        walls = 1 # if there is 1 wall or no wall, p = 1
                     # Heuristic function: offense distance * defense walls * offense direction
                     p = (1 - dis/20) * walls * self.calculate_direction((x,y), adv_pos, dir)
                 legal.append([p, 0, 1, (x, y), dir]) # append to legal
@@ -74,7 +74,7 @@ class Student16Agent(Agent):
                 if new_pos not in visited and cur_step + 1 <= max_step: # if not visited and not exceed max_step, append to queue
                     visited.append(new_pos)
                     state_queue.append((new_pos, cur_step + 1))
-        return sorted(legal, key=lambda x: x[0], reverse=True)
+        return sorted(legal, key=lambda x: x[0], reverse=True) # sort legal moves based on p, higher p first
     
     # calculate the manhattan distance between two positions
     def calculate_distance(self, my_pos, adv_pos):
@@ -82,16 +82,16 @@ class Student16Agent(Agent):
         r1, c1 = adv_pos
         return abs(r0 - r1) + abs(c0 - c1)
     
-    # calculate the direction of the adversary (for offensive heuristic)
+    # Offensive heuristic: calculate the direction of the adversary 
     def calculate_direction(self, my_pos, adv_pos, dir):
         r0, c0 = my_pos
         r1, c1 = adv_pos
         if (r0 < r1 and dir == 2) or (r0 > r1 and dir == 0) or (c0 < c1 and dir == 1) or (c0 > c1 and dir == 3):
-            return 1
+            return 1 # if the direction is towards the adversary, p = 1
         elif (r0 == r1 and dir == 2) or (r0 == r1 and dir == 0) or (c0 == c1 and dir == 1) or (c0 == c1 and dir == 3):
-            return 0.5
+            return 0.5 # if the direction is perpendicular to the adversary, p = 0.5
         else:
-            return 0
+            return 0 # if the direction is away from the adversary, p = 0
     
     # build or remove barrier
     def set_barrier(self, r, c, dir, step_board, is_set):
@@ -102,7 +102,7 @@ class Student16Agent(Agent):
         move = self.moves[dir]
         step_board[r + move[0], c + move[1], opposites[dir]] = is_set
     
-    # randomly select from the best moves simulation
+    # randomly select from the best moves simulation step
     def simulation(self, my_pos, dir, adv_pos, max_step, step_board, start_time):
         # take the current step
         self.set_barrier(my_pos[0], my_pos[1], dir, step_board, True)
@@ -110,38 +110,38 @@ class Student16Agent(Agent):
         score = 0 # score = 1 if win, score = -1 if lose, score = 0 if tie
         depth = 0 # depth of simulations
         gameover = False
-        while (not gameover and not self.timeout(start_time) and depth <= max_step) :
-            depth += 0.5
+        while (not gameover and not self.timeout(start_time) and depth <= max_step) : # if timeout or gameover or depth > max_step, break
+            depth += 0.5 # increase depth by 0.5, break if depth > max_step (stop simulations if too deep - no use)
             # is_gamover is true if one of the player is enclosed, return the winner
             if (player_switch == -1) :
                 # adversary's turn
-                a_children = self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sims]
-                if len(a_children) == 0:
+                a_children = self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sims] # get top legal moves
+                if len(a_children) == 0: # if no legal moves, gameover
                     gameover, score = self.is_gameover(my_pos, adv_pos, step_board)
                     break
                 else:
-                    n = np.random.randint(0, len(a_children))
+                    n = np.random.randint(0, len(a_children)) # randomly select a move out of top legal moves and play it
                     adv_pos, dir = a_children[n][3], a_children[n][4]
                     self.set_barrier(adv_pos[0], adv_pos[1], dir, step_board, True)
             else :
                 # my turn
-                m_children = self.all_moves(step_board, my_pos, adv_pos, max_step, start_time)[:self.max_sims]
-                if len(m_children) == 0:
+                m_children = self.all_moves(step_board, my_pos, adv_pos, max_step, start_time)[:self.max_sims] # get top legal moves
+                if len(m_children) == 0: # if no legal moves, gameover
                     gameover, score = self.is_gameover(my_pos, adv_pos, step_board)
                     break
                 else:
-                    n = np.random.randint(0, len(m_children))
+                    n = np.random.randint(0, len(m_children)) # randomly select a move out of top legal moves and play it
                     my_pos, dir = m_children[n][3], m_children[n][4]
                     self.set_barrier(my_pos[0], my_pos[1], dir, step_board, True)
-            gameover, score = self.is_gameover(my_pos, adv_pos, step_board) # check if gameover
+            gameover, score = self.is_gameover(my_pos, adv_pos, step_board) # check if gameover and get score
             player_switch *= -1 # switch player
-        # run random simulation on x, y, d node. if win, s+=1, lose, s-=1. tie s+=0
-        return score * (2 - depth/max_step)
+        # run random simulations. if win, s+=1, lose, s-=1. tie or unfinished simulations s+=0
+        return score * (2 - depth/max_step) # return score * (2 - depth/max_step) to give more weight to win/lose in early simulations
     
     # check if gameover
     def is_gameover(self, my_pos, adv_pos, step_board):
-        # return list of spaces reachable from pos
-        def find(pos):
+        # return list of spaces reachable from pos using BFS
+        def find(pos): 
             visited = [pos]
             path_queue = [pos]
             while path_queue:
@@ -173,8 +173,8 @@ class Student16Agent(Agent):
             # return a list of legal moves using BFS
             # for every possible num of steps until max_step, travel 4 directions + put wall. append to legal, sort and return the top #
             legal = [] # list of [(x, y), dir]
-            state_queue = [(my_pos, 0)]
-            visited = [my_pos, adv_pos]
+            state_queue = [(my_pos, 0)] # queue of next states
+            visited = [my_pos, adv_pos] # list of visited states
             # BFS
             while state_queue:
                 cur_pos, cur_step = state_queue.pop()
@@ -192,7 +192,7 @@ class Student16Agent(Agent):
             return len(legal)
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         for i in range(len(children)):
-            # get numbe rof moves left before placing wall
+            # get number of moves left before placing wall
             new_pos, new_dir = children[i][3], children[i][4]
             adv_moves_bef = find_moves(adv_pos, my_pos, chess_board, max_step)
             my_moves_bef = find_moves(my_pos, adv_pos, chess_board, max_step)
@@ -201,7 +201,7 @@ class Student16Agent(Agent):
             adv_moves_aft = find_moves(adv_pos, my_pos, chess_board, max_step)
             my_moves_aft = find_moves(my_pos, adv_pos, chess_board, max_step)
             self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, False)
-            # update p based on heuristic, 
+            # update p based on heuristic:  
             # offensive: increase p if adv_moves_aft < adv_moves_bef, increase p if my_moves_aft > my_moves_bef
             # defensive: decrease p if adv_moves_aft > adv_moves_bef, decrease p if my_moves_aft < my_moves_bef
             if (adv_moves_aft < adv_moves_bef) :
@@ -212,7 +212,7 @@ class Student16Agent(Agent):
                 children[i][0] -= 0.1
             if (my_moves_aft < my_moves_bef) :
                 children[i][0] -= 0.1
-        return sorted(children, key=lambda x: x[0], reverse=True)
+        return sorted(children, key=lambda x: x[0], reverse=True) # sort legal moves based on p, higher p first
 
     # get the best next move
     def best_move(self, children):
@@ -220,7 +220,7 @@ class Student16Agent(Agent):
         # where (x, y) is the next position of your agent and dir is the direction of the wall you want to put on.
         # [(p, s, n, (x, y), dir), ...]
         best_next_move = sorted(children, key=lambda x: ((x[1]/x[2], x[0])), reverse=True)[0]
-        return best_next_move[3], best_next_move[4]
+        return best_next_move[3], best_next_move[4] # return (x, y), dir
     
     def step(self, chess_board, my_pos, adv_pos, max_step):
         """
@@ -246,19 +246,17 @@ class Student16Agent(Agent):
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         children = self.all_moves(chess_board, my_pos, adv_pos, max_step, start_time)[:10] # get top legal moves
         children = self.check_moves_left(chess_board, my_pos, adv_pos, max_step, children) # heuristic: check moves left after placing wall
-        #print("time:", time.time() - start_time)
         if (len(children) == 1): 
             # only one move (usually immediate win)
             my_pos, dir = children[0][3], children[0][4]
         elif (len(children) != 0): # more than one move, run simulations to find the best move
             for i in range(len(children)): # run simulations on each child
                 while (children[i][2] < self.max_sims and not self.timeout(start_time)): # run until max_sims or timeout
-                    #step_board = deepcopy(chess_board) # copy the chess_board
-                    step_board = np.array(json.loads(json.dumps(chess_board_list))) # copy the chess_board
+                    #step_board = deepcopy(chess_board) # copy the chess_board but deepcopy version is slower - enable if cannot use json
+                    step_board = np.array(json.loads(json.dumps(chess_board_list))) # copy the chess_board using json
                     score = self.simulation(children[i][3], children[i][4], adv_pos, max_step, step_board, start_time) # run simulation
                     children[i][1] += score # update score
                     children[i][2] += 1 # update num of simulations
-                #print("num:", children[i])
                 if (self.timeout(start_time)): # if timeout, break
                     break
             my_pos, dir = self.best_move(children) # get the best move based on score/num_sims
