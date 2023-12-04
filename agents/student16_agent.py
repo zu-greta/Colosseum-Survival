@@ -217,8 +217,7 @@ class Student16Agent(Agent):
                         c = visited[c[nParent]]  # go to parent
                         if c[nG] <= max_step:
                             path.append((c[nX], c[nY]))
-                    return path, cur[
-                        nG], visited_node  # return the furthest position reachable from my_pos and closed_list
+                    return path, cur[nG], visited_node  # return the furthest position reachable from my_pos and closed_list
                 visited_list.append((cur[nX], cur[nY]))
                 visited_node.append(((cur[nX], cur[nY]), cur[nG]))
                 visited.append(cur)
@@ -236,7 +235,7 @@ class Student16Agent(Agent):
                     if sum([1 for oN in open_list if ((x, y) == (oN[nX], oN[nY]) and new_node[nG] > oN[nG])]):
                         continue
                     open_list.append(new_node)
-            return [], 0  # Nothing is find
+            return [], 0 , [] # Nothing found
 
         # find the max position reachable from my_pos (using max_step)
         path, m_step, visited = aStar_Search(chess_board, my_pos, adv_pos, max_step) # [(x, y, step), ...]
@@ -256,15 +255,17 @@ class Student16Agent(Agent):
                     self.set_barrier(x, y, dir, chess_board, True)
                     over, w = self.is_gameover(p_pos, adv_pos, chess_board)
                     self.set_barrier(x, y, dir, chess_board, False)
-                    if over and w != -1: return [[1, 1, 1, p_pos, dir]]
-                    # Defense heuristic
-                    if sum([chess_board[x, y, i] for i in range(4)]) >= 2:  # if there are 2 walls, p = 0.1
-                        walls = 0.1
+                    if over:
+                        if w != -1: return [[1, 1, 1, p_pos, dir]]
                     else:
-                        walls = 1
-                    # Heuristic function: offense distance * defense walls * offense direction
-                    p = dis_p * walls * self.calculate_direction((x, y), adv_pos, dir)
-                    children.append([p, 0, 1, p_pos, dir])  # append to legal
+                        # Defense heuristic
+                        if sum([chess_board[x, y, i] for i in range(4)]) >= 2:  # if there are 2 walls, p = 0.1
+                            walls = 0.1
+                        else:
+                            walls = 1
+                        # Heuristic function: offense distance * defense walls * offense direction
+                        p = dis_p * walls * self.calculate_direction((x, y), adv_pos, dir)
+                        children.append([p, 0, 1, p_pos, dir])  # append to legal
             children = sorted(children, key=lambda x: x[0], reverse=True)[:10]  # sort on f value
         else:
             for p_pos in path: # check if there is any winner step
@@ -329,14 +330,12 @@ class Student16Agent(Agent):
         # get all legal moves in order of priority based on heuristic function
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         children = self.all_moves(chess_board, my_pos, adv_pos, max_step, start_time)[:10] # get top legal moves
-        #children = self.check_moves_left(chess_board, my_pos, adv_pos, max_step, children) # heuristic: check moves left after placing wall
-        if (len(children) == 1): 
+        if (len(children) == 1):
             # only one move (usually immediate win)
             my_pos, dir = children[0][3], children[0][4]
         elif (len(children) != 0): # more than one move, run simulations to find the best move
             for i in range(len(children)): # run simulations on each child
                 while (children[i][2] < self.max_sims and not self.timeout(start_time)): # run until max_sims or timeout
-                    #step_board = deepcopy(chess_board) # copy the chess_board but deepcopy version is slower - enable if cannot use json
                     step_board = np.array(json.loads(json.dumps(chess_board_list))) # copy the chess_board using json
                     score = self.simulation(children[i][3], children[i][4], adv_pos, max_step, step_board, start_time) # run simulation
                     children[i][1] += score # update score
