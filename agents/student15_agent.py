@@ -348,5 +348,5 @@ class Student15Agent(Agent):
             my_pos, dir = self.best_move(children) # get the best move based on score/num_sims
 
         time_taken = time.time() - start_time     
-        print("My 16 AI's turn took ", time_taken, "seconds.")
+        print("My AI's turn took ", time_taken, "seconds.")
         return my_pos, dir 
