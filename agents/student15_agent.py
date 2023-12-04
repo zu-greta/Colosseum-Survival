@@ -1,4 +1,4 @@
-# clean up 16 - best version!
+# best - transferred to student
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
