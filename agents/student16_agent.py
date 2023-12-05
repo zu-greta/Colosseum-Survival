@@ -1,6 +1,6 @@
 # win rate 58% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 3, max_sels = 3]
 # win rate 52% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 6, max_sels = 3]
-# win rate ?% against student_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 4, max_sels = 3]
+# win rate 68% against student_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 4, max_sels = 3]
 # win rate ?% against student_agent with 700 games and 1.9 time. [adjust once only, all_moves in simulation, max_sims = 4, max_sels = 3]
 
 # Student agent: Add your own agent here
@@ -306,7 +306,7 @@ class Student16Agent(Agent):
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         children = self.all_moves(chess_board, my_pos, adv_pos, max_step, start_time) # get top legal moves
         if (len(children) > 1): # more than one move, run simulations to find the best move
-            self.adjust(self, children, my_pos, adv_pos, max_step, chess_board)
+            self.adjust(children, my_pos, adv_pos, max_step, chess_board)
             self.simulation(children, adv_pos, max_step, chess_board, start_time, 1, self.max_sims)
             children.sort(key=lambda x: (x[1], x[0]), reverse=True)
             #print("16 Sim:", children)
