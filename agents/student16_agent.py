@@ -118,8 +118,7 @@ class Student16Agent(Agent):
                     over, w = self.is_gameover((x, y), adv_pos, chess_board)
                     self.set_barrier(x, y, dir, chess_board, False)
                     if over:  # gameover, get winner and set p as the returned winner
-                        p = w  # p = 1 if I win, p = -1 if I lose, p = 0 if tie
-                        if p != -1:
+                        if w != -1: # p = 1 if I win, p = -1 if I lose, p = 0 if tie
                             return [[1, 1, 1, (x, y), dir]]  # immediate win, just play that move
                     else:
                         # Defense heuristic (counts the number of walls around me)
@@ -129,7 +128,7 @@ class Student16Agent(Agent):
                             walls = 1  # if there is 1 wall or no wall, p = 1
                         # Heuristic function: offense distance * defense walls * offense direction
                         p = dis_p * walls * self.calculate_direction((x, y), adv_pos, dir)
-                    legal.append([p, 0, 1, (x, y), dir])  # append to legal
+                        legal.append([p, 0, 1, (x, y), dir])  # append to legal
                     # get the next step
                     new_x, new_y = x + move[0], y + move[1]
                     new_pos = (new_x, new_y)
@@ -212,11 +211,12 @@ class Student16Agent(Agent):
                         self.set_barrier(x, y, dir, chess_board, False)
                         if over and w != -1: return [[1, 1, 1, p_pos, dir]]
 
-        if not len(children): # take the first path position
-            x, y = path[0]
+        if not len(children): # nothing found
+            if len(path): x, y = path[0] # take the first path position
+            else: x, y = my_pos # take my pos
             for d in range(4):
                 if not chess_board[x, y, d]:
-                    children.append([self.calculate_direction(path[0], adv_pos, d), 0, 1, path[0], d])
+                    children.append([self.calculate_direction((x,y), adv_pos, d), 0, 1, (x,y), d])
         return children
 
     def adjust(self, children, my_pos, adv_pos, max_step, chess_board):
