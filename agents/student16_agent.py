@@ -9,6 +9,7 @@
 # adding start time into aStarSearch;
 # adding protection in all_moves in case nothing is found
 # win rate 72% against student_agent with 100 games and 1.9 time.
+# win rate 10% against student_agent with 10 games and 1.91 time.
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
