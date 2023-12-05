@@ -1,15 +1,18 @@
-# win rate 58% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 3, max_sels = 3]
-# win rate 52% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 6, max_sels = 3]
-# win rate 68% against student_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 4, max_sels = 3]
-# win rate 61% against student_agent with 700 games and 3.2 time. [adjust once only, all_moves in simulation, max_sims = 4, max_sels = 3]
-# win rate % against student_agent with 100 games and 1.9 time. [adding start time into aStarSearch; fix all_moves error when nothing is found]
+# max_sims = 3, max_sels = 3
+# win rate 58% against student15_agent with 100 games and 1.9 time.
+# max_sims = 6, max_sels = 3
+# win rate 52% against student15_agent with 100 games and 1.9 time.
+# max_sims = 4, max_sels = 3
+# win rate 68% against student_agent with 100 games and 1.9 time.
+# make adjust only once only
+# win rate 61% against student_agent with 700 games and 3.2 time.
+# adding start time into aStarSearch;
+# adding protection in all_moves in case nothing is found
+# win rate 72% against student_agent with 100 games and 1.9 time.
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
 from store import register_agent
-import sys
-import numpy as np
-from copy import deepcopy
 import time
 
 import json #standard python library - no need to install (used instead of deepcopy)
@@ -135,7 +138,7 @@ class Student16Agent(Agent):
                     if new_pos not in visited and cur_step + 1 <= max_step:  # if not visited and not exceed max_step, append to queue
                         visited.append(new_pos)
                         state_queue.append((new_pos, cur_step + 1))
-            return sorted(legal, key=lambda x: x[0], reverse=True)  # sort legal moves based on p, higher p first
+            return legal  # sort legal moves based on p, higher p first
 
         # find the shortest path from my_pos to adv_pos
         def aStar_Search(chess_board, my_pos, adv_pos, max_step, start_time):
@@ -179,10 +182,10 @@ class Student16Agent(Agent):
         # find the max position reachable from my_pos (using max_step)
         path, m_step, visited = aStar_Search(chess_board, my_pos, adv_pos, max_step, start_time) # [(x, y, step), ...]
         children = []
-        if m_step <= max_step:
+        if m_step <= max_step and not self.timeout(start_time):
             # close enough to run BFS
             children = BFS_search(chess_board, my_pos, adv_pos, max_step, start_time)[:self.max_node]
-        elif m_step <= max_step * 1.5:
+        elif m_step <= max_step * 1.5 and len(visited) and not self.timeout(start_time):
             for p_pos, dir, p_step in sorted(visited, key=lambda x: x[2], reverse=True)[:self.max_node]:
                 (x,y) = p_pos
                 #check if gameover, me winner = 1, adv winner = -1, tie = 0
@@ -217,7 +220,7 @@ class Student16Agent(Agent):
             for d in range(4):
                 if not chess_board[x, y, d]:
                     children.append([self.calculate_direction((x,y), adv_pos, d), 0, 1, (x,y), d])
-        return children
+        return sorted(children, key=lambda x: x[0], reverse=True)
 
     def adjust(self, children, my_pos, adv_pos, max_step, chess_board):
         def find_moves(my_pos, adv_pos, chess_board, max_step):
@@ -281,7 +284,6 @@ class Student16Agent(Agent):
             self.set_barrier(my_pos[0], my_pos[1], dir, step_board, False)
             children[i][1] += gamescore
             score += gamescore
-            #children[i][2] = 100
         return score / n_sim
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
@@ -310,7 +312,6 @@ class Student16Agent(Agent):
             self.adjust(children, my_pos, adv_pos, max_step, chess_board)
             self.simulation(children, adv_pos, max_step, chess_board, start_time, 1, self.max_sims)
             children.sort(key=lambda x: (x[1], x[0]), reverse=True)
-            #print("16 Sim:", children)
         time_taken = time.time() - start_time
         print("My 16 AI's turn took ", time_taken, "seconds.")
         return children[0][3], children[0][4]
