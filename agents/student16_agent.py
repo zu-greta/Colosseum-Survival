@@ -1,7 +1,7 @@
 # win rate 58% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 3, max_sels = 3]
 # win rate 52% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 6, max_sels = 3]
 # win rate ?% against student_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 4, max_sels = 3]
-# win rate ?% against student_agent with 100 games and 1.9 time. [adjust once only, all_moves in simulation, max_sims = 4, max_sels = 3]
+# win rate ?% against student_agent with 700 games and 1.9 time. [adjust once only, all_moves in simulation, max_sims = 4, max_sels = 3]
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
@@ -32,6 +32,7 @@ class Student16Agent(Agent):
         self.max_time = 1.9 # max time for each step
         self.max_sims = 4   # max simulations step
         self.max_sels = 3   # max selections for each step
+        self.max_node = 10  # max simulation nodes at step 1
         self.moves = ((-1, 0), (0, 1), (1, 0), (0, -1)) # up, right, down, left
 
     # check if time out
@@ -107,8 +108,7 @@ class Student16Agent(Agent):
             while state_queue and not self.timeout(start_time):  # if timeout or state_queue is empty, break
                 cur_pos, cur_step = state_queue.pop()  # get the current position and current step
                 x, y = cur_pos  # get the current x, y
-                dis_p = 1 - self.calculate_distance(cur_pos,
-                                                    adv_pos) / 20  # get the distance between my current position and adv
+                dis_p = 1 - self.calculate_distance(cur_pos, adv_pos) / 20  # get the distance between my current position and adv
                 for dir, move in enumerate(self.moves):  # 4 directions
                     if chess_board[x, y, dir]:  # if there is a wall, skip the move
                         continue
@@ -181,9 +181,9 @@ class Student16Agent(Agent):
         children = []
         if m_step <= max_step:
             # close enough to run BFS
-            children = BFS_search(chess_board, my_pos, adv_pos, max_step, start_time)[:10]
+            children = BFS_search(chess_board, my_pos, adv_pos, max_step, start_time)[:self.max_node]
         elif m_step <= max_step * 1.5:
-            for p_pos, dir, p_step in sorted(visited, key=lambda x: x[2], reverse=True)[:10]:
+            for p_pos, dir, p_step in sorted(visited, key=lambda x: x[2], reverse=True)[:self.max_node]:
                 (x,y) = p_pos
                 #check if gameover, me winner = 1, adv winner = -1, tie = 0
                 self.set_barrier(x, y, dir, chess_board, True)
@@ -253,13 +253,13 @@ class Student16Agent(Agent):
             self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, False)
             # update p based on heuristic,
             if (adv_moves_aft < adv_moves_bef):
-                children[i][0] += 0.1
+                children[i][0] += 0.5
             if (my_moves_aft > my_moves_bef):
-                children[i][0] += 0.1
+                children[i][0] += 0.5
             if (adv_moves_aft > adv_moves_bef):
-                children[i][0] -= 0.1
+                children[i][0] -= 0.5
             if (my_moves_aft < my_moves_bef):
-                children[i][0] -= 0.1
+                children[i][0] -= 0.5
         return sorted(children, key=lambda x: x[0], reverse=True)
 
     # randomly select from the best moves simulation step
@@ -304,7 +304,7 @@ class Student16Agent(Agent):
         start_time = time.time()
         # get all legal moves in order of priority based on heuristic function
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
-        children = self.all_moves(chess_board, my_pos, adv_pos, max_step, start_time)[:10] # get top legal moves
+        children = self.all_moves(chess_board, my_pos, adv_pos, max_step, start_time) # get top legal moves
         if (len(children) > 1): # more than one move, run simulations to find the best move
             self.adjust(self, children, my_pos, adv_pos, max_step, chess_board)
             self.simulation(children, adv_pos, max_step, chess_board, start_time, 1, self.max_sims)
