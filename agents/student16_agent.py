@@ -2,7 +2,7 @@
 # win rate 52% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 6, max_sels = 3]
 # win rate 68% against student_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 4, max_sels = 3]
 # win rate 61% against student_agent with 700 games and 3.2 time. [adjust once only, all_moves in simulation, max_sims = 4, max_sels = 3]
-# win rate % against student_agent with 100 games and 1.9 time. [adding start time into a star search]
+# win rate % against student_agent with 100 games and 1.9 time. [adding start time into aStarSearch; fix all_moves error when nothing is found]
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
