@@ -1,7 +1,8 @@
 # win rate 58% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 3, max_sels = 3]
 # win rate 52% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 6, max_sels = 3]
 # win rate 68% against student_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 4, max_sels = 3]
-# win rate ?% against student_agent with 700 games and 1.9 time. [adjust once only, all_moves in simulation, max_sims = 4, max_sels = 3]
+# win rate 61% against student_agent with 700 games and 3.2 time. [adjust once only, all_moves in simulation, max_sims = 4, max_sels = 3]
+# win rate % against student_agent with 100 games and 1.9 time. [adding start time into a star search]
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
@@ -138,13 +139,13 @@ class Student16Agent(Agent):
             return sorted(legal, key=lambda x: x[0], reverse=True)  # sort legal moves based on p, higher p first
 
         # find the shortest path from my_pos to adv_pos
-        def aStar_Search(chess_board, my_pos, adv_pos, max_step):
+        def aStar_Search(chess_board, my_pos, adv_pos, max_step, start_time):
             [nX, nY, nG, nH, nParent] = [i for i in range(5)]
             open_list = [[my_pos[0], my_pos[1], 0, 0, None]]  # [0: x, 1: y, 2: g, 3: h, 4: parent]
             visited_list = []
             visited_node = []
             visited = []
-            while open_list:
+            while open_list and not self.timeout(start_time):
                 open_list.sort(key=lambda x: x[nG] + x[nH], reverse=True)  # sort on f value
                 cur = open_list.pop()  # node with least f value sorted on the rightmost
                 if (cur[nX], cur[nY]) == adv_pos:
@@ -177,7 +178,7 @@ class Student16Agent(Agent):
             return [], 0, [] # Nothing found
 
         # find the max position reachable from my_pos (using max_step)
-        path, m_step, visited = aStar_Search(chess_board, my_pos, adv_pos, max_step) # [(x, y, step), ...]
+        path, m_step, visited = aStar_Search(chess_board, my_pos, adv_pos, max_step, start_time) # [(x, y, step), ...]
         children = []
         if m_step <= max_step:
             # close enough to run BFS
@@ -274,12 +275,12 @@ class Student16Agent(Agent):
             gameover, gamescore = self.is_gameover(my_pos, adv_pos, step_board)  # check if gameover and get score
             if gameover:
                 if not myTurn: gamescore = - gamescore
-                children[i][1] += gamescore;
             elif depth:
-                children[i][1] += self.simulation(self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sels],
+                gamescore = self.simulation(self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sels],
                            my_pos, max_step, step_board, start_time, 1 - myTurn, depth - 1)
             self.set_barrier(my_pos[0], my_pos[1], dir, step_board, False)
-            score += children[i][1]
+            children[i][1] += gamescore
+            score += gamescore
             #children[i][2] = 100
         return score / n_sim
 
