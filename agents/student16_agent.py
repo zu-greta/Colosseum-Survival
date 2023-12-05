@@ -1,8 +1,6 @@
-# win rate: 60% against student_agent with 100 games and 1.9 time. [self.max_sels = 3]
-# win rate: 55% against student_agent with 1000 games and 1.9 time. [self.max_sels = 2]
-# win rate: 70% against student_agent with 10 games and 1.9 time. [self.max_sels = 5]
-# win rate 58% against student15_agent with 100 games and 1.9 time. [all_moves, max_sims = 3, max_sels = 3]
-# win rate ?% against student15_agent with 100 games and 1.9 time. [all_moves, max_sims = 6, max_sels = 3]
+# win rate 58% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 3, max_sels = 3]
+# win rate 52% against student15_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 6, max_sels = 3]
+# win rate ?% against student_agent with 100 games and 1.9 time. [all_moves in simulation, max_sims = 4, max_sels = 3]
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
@@ -31,7 +29,7 @@ class Student16Agent(Agent):
             "l": 3,
         }
         self.max_time = 1.9 # max time for each step
-        self.max_sims = 6   # max simulations step
+        self.max_sims = 4   # max simulations step
         self.max_sels = 3   # max selections for each step
         self.moves = ((-1, 0), (0, 1), (1, 0), (0, -1)) # up, right, down, left
 
