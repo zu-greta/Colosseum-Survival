@@ -1,6 +1,8 @@
 # win rate: 60% against student_agent with 100 games and 1.9 time. [self.max_sels = 3]
 # win rate: 55% against student_agent with 1000 games and 1.9 time. [self.max_sels = 2]
 # win rate: 70% against student_agent with 10 games and 1.9 time. [self.max_sels = 5]
+# win rate 58% against student15_agent with 100 games and 1.9 time. [all_moves, max_sims = 3, max_sels = 3]
+# win rate ?% against student15_agent with 100 games and 1.9 time. [all_moves, max_sims = 6, max_sels = 3]
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
@@ -29,8 +31,8 @@ class Student16Agent(Agent):
             "l": 3,
         }
         self.max_time = 1.9 # max time for each step
-        self.max_sims = 5 # max simulations for each step
-        self.max_sels = 5  # max selections for each step
+        self.max_sims = 6   # max simulations step
+        self.max_sels = 3   # max selections for each step
         self.moves = ((-1, 0), (0, 1), (1, 0), (0, -1)) # up, right, down, left
 
     # check if time out
@@ -102,43 +104,7 @@ class Student16Agent(Agent):
         # Set the opposite barrier to True/False
         move = self.moves[dir]
         step_board[r + move[0], c + move[1], opposites[dir]] = is_set
-    
-    # randomly select from the best moves simulation step
-    def simulation(self, my_pos, dir, adv_pos, max_step, step_board, start_time):
-        # take the current step
-        self.set_barrier(my_pos[0], my_pos[1], dir, step_board, True)
-        player_switch = -1 # -1 is adv, 1 is me. every time switch player do player_switch *= -1
-        score = 0 # score = 1 if win, score = -1 if lose, score = 0 if tie
-        depth = 0 # depth of simulations
-        gameover = False
-        while (not gameover and not self.timeout(start_time) and depth <= max_step) : # if timeout or gameover or depth > max_step, break
-            depth += 0.5 # increase depth by 0.5, break if depth > max_step (stop simulations if too deep - no use)
-            # is_gamover is true if one of the player is enclosed, return the winner
-            if (player_switch == -1) :
-                # adversary's turn
-                a_children = self.BFS_search(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sels] # get top legal moves
-                if len(a_children) == 0: # if no legal moves, gameover
-                    gameover, score = self.is_gameover(my_pos, adv_pos, step_board)
-                    break
-                else:
-                    n = np.random.randint(0, len(a_children)) # randomly select a move out of top legal moves and play it
-                    adv_pos, dir = a_children[n][3], a_children[n][4]
-                    self.set_barrier(adv_pos[0], adv_pos[1], dir, step_board, True)
-            else :
-                # my turn
-                m_children = self.BFS_search(step_board, my_pos, adv_pos, max_step, start_time)[:self.max_sels] # get top legal moves
-                if len(m_children) == 0: # if no legal moves, gameover
-                    gameover, score = self.is_gameover(my_pos, adv_pos, step_board)
-                    break
-                else:
-                    n = np.random.randint(0, len(m_children)) # randomly select a move out of top legal moves and play it
-                    my_pos, dir = m_children[n][3], m_children[n][4]
-                    self.set_barrier(my_pos[0], my_pos[1], dir, step_board, True)
-            gameover, score = self.is_gameover(my_pos, adv_pos, step_board) # check if gameover and get score
-            player_switch *= -1 # switch player
-        # run random simulations. if win, s+=1, lose, s-=1. tie or unfinished simulations s+=0
-        return score * (2 - depth/max_step) # return score * (2 - depth/max_step) to give more weight to win/lose in early simulations
-    
+
     # check if gameover
     def is_gameover(self, my_pos, adv_pos, step_board):
         # return list of spaces reachable from pos using BFS
@@ -167,14 +133,6 @@ class Student16Agent(Agent):
             return True, -1
         else: # if find_my_pos is larger, I win
             return True, 1
-
-    # get the best next move
-    def best_move(self, children):
-        # return a tuple of ((x, y), dir),
-        # where (x, y) is the next position of your agent and dir is the direction of the wall you want to put on.
-        # [(p, s, n, (x, y), dir), ...]
-        best_next_move = sorted(children, key=lambda x: ((x[1]/x[2], x[0])), reverse=True)[0]
-        return best_next_move[3], best_next_move[4] # return (x, y), dir
 
     # A* search to find the shortest path from my_pos to adv_pos
     def all_moves(self, chess_board, my_pos, adv_pos, max_step, start_time):
@@ -303,6 +261,27 @@ class Student16Agent(Agent):
                     children[i][0] -= 0.1
         return sorted(children, key=lambda x: x[0], reverse=True)
 
+    # randomly select from the best moves simulation step
+    def simulation(self, children, adv_pos, max_step, step_board, start_time, myTurn, depth):
+        score, n_sim = 0, 1
+        for i in range(len(children)):
+            if self.timeout(start_time): break
+            n_sim += 1
+            my_pos, dir = children[i][3], children[i][4]
+            # take the current step
+            self.set_barrier(my_pos[0], my_pos[1], dir, step_board, True)
+            gameover, gamescore = self.is_gameover(my_pos, adv_pos, step_board)  # check if gameover and get score
+            if gameover:
+                if not myTurn: gamescore = - gamescore
+                children[i][1] += gamescore;
+            elif depth:
+                children[i][1] += self.simulation(self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sels],
+                           my_pos, max_step, step_board, start_time, 1 - myTurn, depth - 1)
+            self.set_barrier(my_pos[0], my_pos[1], dir, step_board, False)
+            score += children[i][1]
+            #children[i][2] = 100
+        return score / n_sim
+
     def step(self, chess_board, my_pos, adv_pos, max_step):
         """
         Implement the step function of your agent here.
@@ -326,20 +305,11 @@ class Student16Agent(Agent):
         # get all legal moves in order of priority based on heuristic function
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         children = self.all_moves(chess_board, my_pos, adv_pos, max_step, start_time)[:10] # get top legal moves
-        if (len(children) == 1):
-            # only one move (usually immediate win)
-            my_pos, dir = children[0][3], children[0][4]
-        elif (len(children) != 0): # more than one move, run simulations to find the best move
-            for i in range(len(children)): # run simulations on each child
-                while (children[i][2] < self.max_sims and not self.timeout(start_time)): # run until max_sims or timeout
-                    step_board = np.array(json.loads(json.dumps(chess_board_list))) # copy the chess_board using json
-                    score = self.simulation(children[i][3], children[i][4], adv_pos, max_step, step_board, start_time) # run simulation
-                    children[i][1] += score # update score
-                    children[i][2] += 1 # update num of simulations
-                if (self.timeout(start_time)): # if timeout, break
-                    break
-            my_pos, dir = self.best_move(children) # get the best move based on score/num_sims
-
+        if (len(children) > 1): # more than one move, run simulations to find the best move
+            self.simulation(children, adv_pos, max_step, chess_board, start_time, 1, self.max_sims)
+            children.sort(key=lambda x: (x[1], x[0]), reverse=True)
+            #print("16 Sim:", children)
+        my_pos, dir = children[0][3], children[0][4]
         time_taken = time.time() - start_time     
         print("My 16 AI's turn took ", time_taken, "seconds.")
-        return my_pos, dir 
+        return my_pos, dir
