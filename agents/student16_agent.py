@@ -212,7 +212,7 @@ class Student16Agent(Agent):
                         self.set_barrier(x, y, dir, chess_board, False)
                         if over and w != -1: return [[1, 1, 1, p_pos, dir]]
 
-        if not children: # take the first path position
+        if not len(children): # take the first path position
             x, y = path[0]
             for d in range(4):
                 if not chess_board[x, y, d]:
