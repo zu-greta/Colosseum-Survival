@@ -159,10 +159,18 @@ class StudentAgent(Agent):
                     continue
                 open_list.append(new_node) # add to open_list
 
+        # if no path, use BFS
+        if m_step == 0:
+            return self.BFS_search(chess_board, my_pos, adv_pos, max_step, start_time)[:self.max_node] # if no path, use BFS
+        
         if m_step > max_step * 1.5: # too far away, throw away visited_node
             visited_node = []
+        else :
+            for n in visited_node:
+                if path_pos == n[3]:
+                    n[0] += 0.5
 
-        if not visited_node: # only one position - either too far or path not found
+        if not visited_node: # only one position - too far
             x, y = path_pos # use the current position
             for d in range(4):
                 if not chess_board[x, y, d]:
@@ -170,6 +178,46 @@ class StudentAgent(Agent):
 
         return sorted(visited_node, key=lambda x: x[0], reverse=True)[:self.max_node] # return top legal moves, based on priority
 
+    # get all legal moves in order of priority based on heuristic function using BFS
+    def BFS_search(self, chess_board, my_pos, adv_pos, max_step, start_time):
+        # return a list of legal moves using BFS
+        # for every possible num of steps until max_step, travel 4 directions + put wall. append to legal, sort and return the top #
+        legal = [] # list of [p, s, n, (x, y), dir]
+        state_queue = [(my_pos, 0)] # queue of next states
+        visited = [my_pos, adv_pos] # list of visited states
+        # BFS
+        while state_queue and not self.timeout(start_time): # if timeout or state_queue is empty, break
+            cur_pos, cur_step = state_queue.pop() # get the current position and current step
+            x, y = cur_pos # get the current x, y
+            dis_p = 1 - self.calculate_distance(cur_pos, adv_pos) / 20 #get the distance between my current position and adv
+            for dir, move in enumerate(self.moves): # 4 directions
+                if chess_board[x, y, dir]: # if there is a wall, skip the move
+                    continue
+                #check if gameover, me winner = 1, adv winner = -1, tie = 0
+                self.set_barrier(x, y, dir, chess_board, True)
+                over, w = self.is_gameover((x, y), adv_pos, chess_board)
+                self.set_barrier(x, y, dir, chess_board, False)
+                if over and w: # gameover, get winner and set p as the returned winner
+                    p = w # p = 1 if I win, p = -1 if I lose, p = 0 if tie
+                    if p == 1:
+                        return [[1, 1, 1, (x, y), dir]] #immediate win, just play that move
+                else:
+                    # Defense heuristic (counts the number of walls around me)
+                    if sum([chess_board[x, y, i] for i in range(4)]) >= 2: # if there are 2 walls, p = 0.1 
+                        walls = 0.1
+                    else: 
+                        walls = 1 # if there is 1 wall or no wall, p = 1
+                    # Heuristic function: offense distance * defense walls * offense direction
+                    p = dis_p * walls * self.calculate_direction((x,y), adv_pos, dir)
+                legal.append([p, 0, 1, (x, y), dir]) # append to legal
+                # get the next step
+                new_x, new_y = x + move[0], y + move[1] 
+                new_pos = (new_x, new_y)
+                if new_pos not in visited and cur_step + 1 <= max_step: # if not visited and not exceed max_step, append to queue
+                    visited.append(new_pos)
+                    state_queue.append((new_pos, cur_step + 1))
+        return sorted(legal, key=lambda x: x[0], reverse=True) # sort legal moves based on p, higher p first
+    
     # Heuristic function: adjust p based on the number of moves left
     def adjust(self, children, my_pos, adv_pos, max_step, chess_board):
         def find_moves(my_pos, adv_pos, chess_board, max_step):
