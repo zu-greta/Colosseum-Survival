@@ -130,9 +130,10 @@ class StudentAgent(Agent):
             for dir, move in enumerate(self.moves):
                 if chess_board[x, y, dir]: # if there is a wall, skip the move
                     continue
-                if cur[nG] <= max_step: # if the node is within max_step, add to visited_node
-                    if BFS and cur[nH] > 3: 
-                        continue # only take close enough node when using BFS
+                if cur[nG] <= max_step and (not BFS or (BFS and cur[nH] <= 2)):
+                #if cur[nG] <= max_step: # if the node is within max_step, add to visited_node
+                    #if BFS and cur[nH] > 2: 
+                    #    continue # only take close enough node when using BFS
                     # check if gameover, me winner = 1, adv winner = -1, tie = 0
                     self.set_barrier(x, y, dir, chess_board, True) # set wall
                     over, p = self.is_gameover((x, y), adv_pos, chess_board) # check if gameover
