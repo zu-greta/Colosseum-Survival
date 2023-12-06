@@ -290,7 +290,7 @@ class Student15Agent(Agent):
             gameover, gamescore = self.is_gameover(my_pos, adv_pos, step_board)  # check if gameover and get score
             if gameover:
                 if not myTurn: gamescore = - gamescore
-                children[i][1] += gamescore;
+                children[i][1] += gamescore
             elif depth:
                 children[i][1] += self.simulation(
                     self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sels],
