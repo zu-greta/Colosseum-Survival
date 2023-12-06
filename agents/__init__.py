@@ -21,3 +21,4 @@ from .student16_agent import Student16Agent
 from .student17_agent import Student17Agent
 from .student18_agent import Student18Agent
 from .student19_agent import Student19Agent
+from .student20_agent import Student20Agent
