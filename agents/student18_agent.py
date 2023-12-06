@@ -1,4 +1,4 @@
-# copy of previous 16 2nd best agent
+# copy of previous 16 3nd best agent
 
 # Student agent: Add your own agent here
 from agents.agent import Agent

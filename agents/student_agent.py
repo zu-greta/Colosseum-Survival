@@ -1,3 +1,5 @@
+# 2nd best
+
 # Student agent: Add your own agent here
 from agents.agent import Agent
 from store import register_agent

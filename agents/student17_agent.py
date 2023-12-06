@@ -1,4 +1,4 @@
-# prev known as student_agent.py
+# prev known as student_agent.py - 4rd best version
 
 # win rate: 1.0 against random_agent with 1000 games and 2.75082 time and 20 simulations
 # win rate: 0.5 against student13_agent with 10 games and 1.90 time and 20 simulations

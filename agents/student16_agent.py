@@ -11,6 +11,7 @@
 # remove tie
 # win rate % against student_agent with 10 games and 1.9 seconds.
 # win rate % against student_agent with 10 games and 1.9 seconds.
+# win rate % against student15_agent with 10 games and 1.9 seconds.
 
 # Student agent: Add your own agent here
 from agents.agent import Agent
@@ -99,51 +100,54 @@ class Student16Agent(Agent):
         else:  # if find_my_pos is larger, I win
             return True, 1
 
-    # quick search
+    # get legal moves using A* search and BFS, + heuristic function
     def all_moves(self, chess_board, my_pos, adv_pos, max_step, start_time):
-        # do A star search
+        # do A* search
         [nX, nY, nG, nH, nParent] = [i for i in range(5)]
         open_list = [[my_pos[0], my_pos[1], 0, 0, None]]  # [0: x, 1: y, 2: g, 3: h, 4: parent]
-        visited_list = []
-        visited_node = []
-        visited = []
-        m_step = 0
-        BFS = False
-        path_pos = my_pos
+        visited_list = [] # visited nodes (x, y)
+        visited_node = [] # visited nodes [p, s, n, (x, y), dir]
+        visited = [] # visited nodes [x, y, g, h, parent]
+        m_step = 0 # number of steps to the farthest node in the path
+        BFS = False # flag to decide if BFS is used
+        path_pos = my_pos # in case no path, use current position
+        # A* search
         while open_list and not self.timeout(start_time):
             open_list.sort(key=lambda x: x[nG] + x[nH], reverse=True)  # sort on f value
-            #open_list.sort(key=lambda x: x[nH], reverse=True)  # sort on g value with smallest first
             cur = open_list.pop()  # node with least f value sorted on the rightmost
-            x, y = cur[nX], cur[nY]
-            if (x, y) == adv_pos:
-                if BFS: continue
+            x, y = cur[nX], cur[nY] # current position
+            if (x, y) == adv_pos: # if reach adv_pos, check if BFS is used
+                if BFS: # if BFS is used, continue to next position and finish adding to visited
+                    continue
                 # backtrack to get the path
                 c = cur
                 while c[nParent] is not None:  # from end point, until the start point
                     c = visited[c[nParent]]  # go to parent
-                    if c[nG] <= max_step: # far point on path
-                        path_pos = (c[nX], c[nY])
+                    if c[nG] <= max_step: # furthest point on path
+                        path_pos = (c[nX], c[nY]) # update path_pos
                         break
-                m_step = cur[nG]
-                if cur[nG] <= max_step:
+                m_step = cur[nG] # number of steps to the endpoint node in the path
+                if cur[nG] <= max_step: # if the path is within max_step, use BFS
                     BFS = True
                     continue
-                else:
+                else: # if the path is not within max_step, stop searching 
                     break
-            visited_list.append((x, y))
-            visited.append(cur)
-            if BFS and cur[nG] > max_step: continue
-            dp = 1 - cur[nH] / 20
-            # all children of cur
+            visited_list.append((x, y)) # add to visited_list
+            visited.append(cur) # add to visited
+            if BFS and cur[nG] > max_step: # if BFS is used, only take nodes within max_step
+                continue 
+            dp = 1 - cur[nH] / 20 # Heuristic function: offense distance
+            # get all children of cur
             for dir, move in enumerate(self.moves):
-                if chess_board[x, y, dir]:
+                if chess_board[x, y, dir]: # if there is a wall, skip the move
                     continue
-                if cur[nG] <= max_step:
-                    if BFS and cur[nH] > 2: continue # only take close enough node when using BFS
+                if cur[nG] <= max_step: # if the node is within max_step, add to visited_node
+                    if BFS and cur[nH] > 2: 
+                        continue # only take close enough node when using BFS
                     # check if gameover, me winner = 1, adv winner = -1, tie = 0
-                    self.set_barrier(x, y, dir, chess_board, True)
-                    over, p = self.is_gameover((x, y), adv_pos, chess_board)
-                    self.set_barrier(x, y, dir, chess_board, False)
+                    self.set_barrier(x, y, dir, chess_board, True) # set wall
+                    over, p = self.is_gameover((x, y), adv_pos, chess_board) # check if gameover
+                    self.set_barrier(x, y, dir, chess_board, False) # remove wall
                     if over:  # gameover, get winner and set p as the returned winner
                         if p == 1: # p = 1 if I win, p = -1 if I lose, p = 0 if tie
                             return [[1, 1, 1, (x, y), dir]]  # immediate win, just play that move
@@ -152,11 +156,11 @@ class Student16Agent(Agent):
                         p = dp * self.calculate_direction((x, y), adv_pos, dir)
                         # Defense heuristic (counts the number of walls around me)
                         if sum([chess_board[x, y, i] for i in range(4)]) >= 2:  # if there are 2 walls, p = 0.1
-                            p = 0.1 * p
+                            p *= 0.1 # if there are 3 walls, p *= 0.1
                     visited_node.append([p, 0, 1, (x, y), dir])  # append to legal
-                # search a new node
+                # get the next new node
                 new_x, new_y = x + move[0], y + move[1]
-                # check if child is in closed_list
+                # check if child is in visited_list
                 if (new_x, new_y) in visited_list:
                     continue
                 # assign x, y, step, g, h, and parent
@@ -164,19 +168,20 @@ class Student16Agent(Agent):
                 # check if child is in open_list with higher steps
                 if sum([1 for oN in open_list if ((new_x, new_y) == (oN[nX], oN[nY]) and new_node[nG] > oN[nG])]):
                     continue
-                open_list.append(new_node)
+                open_list.append(new_node) # add to open_list
 
-        if m_step > max_step * 1.5: # too far away
+        if m_step > max_step * 1.5: # too far away, throw away visited_node
             visited_node = []
 
-        if not visited_node: # only one position
-            x, y = path_pos
+        if not visited_node: # only one position - either too far or path not found
+            x, y = path_pos # use the current position
             for d in range(4):
                 if not chess_board[x, y, d]:
                     visited_node.append([self.calculate_direction((x, y), adv_pos, d), 0, 1, (x, y), d])
 
-        return sorted(visited_node, key=lambda x: x[0], reverse=True)[:self.max_node]
+        return sorted(visited_node, key=lambda x: x[0], reverse=True)[:self.max_node] # return top legal moves, based on priority
 
+    # Heuristic function: adjust p based on the number of moves left
     def adjust(self, children, my_pos, adv_pos, max_step, chess_board):
         def find_moves(my_pos, adv_pos, chess_board, max_step):
             # return a list of legal moves using BFS
@@ -202,7 +207,7 @@ class Student16Agent(Agent):
 
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         for i in range(len(children)):
-            # get numbe rof moves left before placing wall
+            # get number of moves left before placing wall
             new_pos, new_dir = children[i][3], children[i][4]
             adv_moves_bef = find_moves(adv_pos, my_pos, chess_board, max_step)
             my_moves_bef = find_moves(my_pos, adv_pos, chess_board, max_step)
@@ -212,6 +217,8 @@ class Student16Agent(Agent):
             my_moves_aft = find_moves(my_pos, adv_pos, chess_board, max_step)
             self.set_barrier(new_pos[0], new_pos[1], new_dir, chess_board, False)
             # update p based on heuristic,
+            # offensive: increase p if adv_moves_aft < adv_moves_bef, increase p if my_moves_aft > my_moves_bef
+            # defensive: decrease p if adv_moves_aft > adv_moves_bef, decrease p if my_moves_aft < my_moves_bef
             if (adv_moves_aft < adv_moves_bef):
                 children[i][0] += 0.5
             if (my_moves_aft > my_moves_bef):
@@ -220,29 +227,30 @@ class Student16Agent(Agent):
                 children[i][0] -= 0.5
             if (my_moves_aft < my_moves_bef):
                 children[i][0] -= 0.5
-        return sorted(children, key=lambda x: x[0], reverse=True)
+        return sorted(children, key=lambda x: x[0], reverse=True) # return top legal moves, based on priority
 
-    # randomly select from the best moves simulation step
+    # select from the best moves: simulation step + backpropagation step using recursion
     def simulation(self, children, adv_pos, max_step, step_board, start_time, myTurn, depth):
-        score, n_sim = 0, 1
-        for i in range(len(children)):
-            if self.timeout(start_time): break
-            n_sim += 1
+        score, n_sim = 0, 1 # score: total score, n_sim: number of simulations
+        for i in range(len(children)): # for each child
+            if self.timeout(start_time): 
+                break
+            n_sim += 1 # increase number of simulations
             my_pos, dir = children[i][3], children[i][4]
             # take the current step
             self.set_barrier(my_pos[0], my_pos[1], dir, step_board, True)
             gameover, gamescore = self.is_gameover(my_pos, adv_pos, step_board)  # check if gameover and get score
-            if gameover:
-                if not myTurn: gamescore = - gamescore
-                children[i][1] += gamescore;
-            elif depth:
+            if gameover: # gameover, get score
+                if not myTurn: 
+                    gamescore = - gamescore # if not myTurn, reverse the score (adv score)
+                children[i][1] += gamescore # update score
+            elif depth: # not gameover and within depth, continue simulation
                 children[i][1] += self.simulation(
                     self.all_moves(step_board, adv_pos, my_pos, max_step, start_time)[:self.max_sels],
-                    my_pos, max_step, step_board, start_time, 1 - myTurn, depth - 1)
-            self.set_barrier(my_pos[0], my_pos[1], dir, step_board, False)
-            score += children[i][1]
-            # children[i][2] = 100
-        return score / n_sim
+                    my_pos, max_step, step_board, start_time, 1 - myTurn, depth - 1) # continue simulations and update score recusively
+            self.set_barrier(my_pos[0], my_pos[1], dir, step_board, False) # remove wall
+            score += children[i][1] # update total score
+        return score / n_sim # return average score
 
     def step(self, chess_board, my_pos, adv_pos, max_step):
         """
@@ -266,11 +274,11 @@ class Student16Agent(Agent):
         # get all legal moves in order of priority based on heuristic function
         # [(p, s, n, (x, y), dir), ...] -> [0: p, 1: s, 2: n, 3: (x, y), 4: dir]
         children = self.all_moves(chess_board, my_pos, adv_pos, max_step, start_time)  # get top legal moves
+        # if only one move just play it - return
         if (len(children) > 1):  # more than one move, run simulations to find the best move
-            self.adjust(children, my_pos, adv_pos, max_step, chess_board)
-            self.simulation(children, adv_pos, max_step, chess_board, start_time, 1, self.max_sims)
-            children.sort(key=lambda x: (x[1], x[0]), reverse=True)
-            # print("16 Sim:", children)
+            self.adjust(children, my_pos, adv_pos, max_step, chess_board) # apply heuristic function
+            self.simulation(children, adv_pos, max_step, chess_board, start_time, 1, self.max_sims) # run simulations to get scores
+            children.sort(key=lambda x: (x[1], x[0]), reverse=True) # sort based on score and then priority
         time_taken = time.time() - start_time
-        print("My 16 AI's turn took ", time_taken, "seconds.")
+        print("My AI's turn took ", time_taken, "seconds.")
         return children[0][3], children[0][4]
